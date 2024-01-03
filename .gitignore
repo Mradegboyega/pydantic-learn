@@ -3,3 +3,4 @@ __pycache__
 .env
 rr.txt
 show.txt
+node_modules

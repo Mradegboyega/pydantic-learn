@@ -1,36 +1,40 @@
 import requests
-from pydantic import BaseModel, confloat, validator
+from pydantic import BaseModel, confloat, field_validator, conint
 import uuid
 from datetime import date, datetime, timedelta
 from enums import Department
+from typing import Literal
 
-url = 'https://raw.githubusercontent.com/bugbytes-io/datasets/master/students_v1.json'
+url = 'https://raw.githubusercontent.com/bugbytes-io/datasets/master/students_v2.json'
 
 response = requests.get(url)
 data = response.json()
-data.append(
-    {
-        "id": "d15782d9-3d8f-4624-a88b-c8e836569df8",
-        "name": "Michelle Oluwadarasimi",
-        "date_of_birth": "2000-08-14",
-        "GPA": "4.8",
-        "course": "Computer Science",
-        "department": "Science and Engineering",
-        "fees_paid": True
-    }
-)
+
+class Module(BaseModel):
+    id: int | uuid.UUID
+    name: str
+    professor: str
+    credits: Literal[10, 20]
+    registration_code: str
+
+    @field_validator('modules', check_fields=False)
+    def validate_module_length(cls, value):
+        if len(value) != 3:
+            raise ValueError('List of modules should have length equal to 3')
+        return value
 
 
 class Student(BaseModel):
     id: uuid.UUID
     name: str
     date_of_birth: date
-    GPA: confloat(gt=0, lt=5)
+    GPA: confloat(ge=0, le=5)
     course: str | None
     department: Department
     fees_paid: bool
+    modules: list[Module] = []
 
-    @validator('date_of_birth')
+    @field_validator('date_of_birth')
     def must_be_16_or_over(cls, value):
         sixteen_years_ago = datetime.now() - timedelta(days=365*16)
         sixteen_years_ago = sixteen_years_ago.date()
@@ -40,6 +44,18 @@ class Student(BaseModel):
 
         return value
 
-for student in data:
-    model = Student(**student)
-    print(model.model_dump())
+# Iterate over data and create Student instances
+# for student_data in data:
+#     student_model = Student(**student_data)
+#     print(student_model)
+    
+# Iterate over data and create Student instances
+for student_data in data:
+    student_model = Student(**student_data)
+    for module in student_model.modules:
+        print(module.model_dump_json(indent=2))
+
+
+# print(Module.model_json_schema())
+
+print(Student.model_json_schema())
